@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 )
 
 const baseRoot = "https://database.deta.sh/v1"
@@ -159,11 +160,8 @@ func (b *base) Get(keys ...string) ([]map[string]interface{}, error) {
 	return container, nil
 }
 
-func (b *base) Delete(keys ...string) []http.Response {
-	if len(keys) == 0 {
-		panic("no keys provided")
-	}
-	respChannel := make(chan http.Response, len(keys))
+func (b *base) Delete(keys ...string) []map[string]interface{} {
+	respChannel := make(chan map[string]interface{}, len(keys))
 	for _, key := range keys {
 		go func(key string) {
 			req := httpRequest{
@@ -173,10 +171,11 @@ func (b *base) Delete(keys ...string) []http.Response {
 				Key:    b.service.key,
 			}
 			resp, _ := req.do()
-			respChannel <- *resp
+			data, _ := responseReader(resp)
+			respChannel <- data
 		}(key)
 	}
-	responses := make([]http.Response, len(keys))
+	responses := make([]map[string]interface{}, len(keys))
 	for i := 0; i < len(keys); i++ {
 		responses[i] = <-respChannel
 	}
