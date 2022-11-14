@@ -15,7 +15,7 @@ func interfaceReader(data interface{}) (io.Reader, error) {
 	return bytes.NewReader(body), nil
 }
 
-func AutoSlice(data []map[string]interface{}, length int) [][]map[string]interface{} {
+func autoSlice(data []map[string]interface{}, length int) [][]map[string]interface{} {
 	var slices [][]map[string]interface{}
 	for i := 0; i < len(data); i += length {
 		end := i + length

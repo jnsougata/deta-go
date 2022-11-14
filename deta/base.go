@@ -16,7 +16,7 @@ type base struct {
 func (b *base) Put(items ...map[string]interface{}) ([]http.Response, []error) {
 	var bodies [][]map[string]interface{}
 	if len(items) > 25 {
-		bodies = AutoSlice(items, 25)
+		bodies = autoSlice(items, 25)
 	} else {
 		bodies = append(bodies, items)
 	}
