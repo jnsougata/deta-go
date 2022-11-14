@@ -119,7 +119,7 @@ func (b *base) Get(keys ...string) ([]map[string]interface{}, error) {
 		req := httpRequest{
 			Body:   nil,
 			Method: "GET",
-			Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseRoot, b.service.projectId, b.Name, keys),
+			Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseRoot, b.service.projectId, b.Name, keys[0]),
 			Key:    b.service.key,
 		}
 		resp, err := req.do()
