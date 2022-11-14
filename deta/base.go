@@ -180,3 +180,59 @@ func (b *base) Delete(keys ...string) []map[string]interface{} {
 	}
 	return responses
 }
+
+func (b *base) Insert(key string , item map[string]interface{}) (map[string]interface{}, error) {
+	if key != "" {
+		item["key"] = key
+	}
+	reader, _ := interfaceReader(map[string]interface{}{"item": item})
+	fmt.Println(item)
+	req := httpRequest{
+		Body:   reader,
+		Method: "POST",
+		Path:   fmt.Sprintf("%s/%s/%s/items", baseRoot, b.service.projectId, b.Name),
+		Key:    b.service.key,
+	}
+	resp, err := req.do()
+	if err != nil {
+		return nil, err
+	}
+	return responseReader(resp)
+}
+
+func (b *base) Update(key string) *updater {
+	return &updater{
+		key:  key,
+		baseName: b.Name,
+		service: b.service,
+		updates: make(map[string]interface{}),
+	}
+}
+
+func (b *base) Fetch(query *query) map[string]interface{} {
+	body := []map[string]interface{}{}
+	if len(query.ors) > 0 {
+		body = query.ors
+	} else if len(query.values) > 0 {
+		body = append(body, query.values)
+	} else {
+		body = []map[string]interface{}{}
+	}
+	queryBody := map[string]interface{}{"query": body}
+	if query.Limit != 0 {
+		queryBody["limit"] = query.Limit
+	}
+	if query.Last != "" {
+		queryBody["last"] = query.Last
+	}
+	reader, _ := interfaceReader(queryBody)
+	req := httpRequest{
+		Body:   reader,
+		Method: "POST",
+		Path:   fmt.Sprintf("%s/%s/%s/query", baseRoot, b.service.projectId, b.Name),
+		Key:    b.service.key,
+	}
+	resp, _ := req.do()
+	data, _ := responseReader(resp)
+	return data
+}
