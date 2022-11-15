@@ -171,20 +171,30 @@ func (b *base) Delete(keys ...string) []*Response {
 
 // Insert inserts a new item into the collection
 // only if the item does not already exist.
-// Response is returned which contains the data of the request.
-func (b *base) Insert(key string, item map[string]interface{}) *Response {
-	if key != "" {
-		item["key"] = key
+// Array of Response is returned which contains the all data of the request.
+func (b *base) Insert(items ...map[string]interface{}) []*Response {
+	container := make(chan *Response, len(items))
+	go func(item []map[string]interface{}) {
+		for _, item := range items {
+			reader, _ := interfaceReader(map[string]interface{}{"item": item})
+			req := httpRequest{
+				Body:   reader,
+				Method: "POST",
+				Path:   fmt.Sprintf("%s/%s/%s/items", baseHost, b.service.projectId, b.Name),
+				Key:    b.service.key,
+			}
+			resp, err := req.do()
+			if err != nil {
+				panic(err)
+			}
+			container <- newResponse(resp)
+		}
+	}(items)
+	resp := make([]*Response, len(items))
+	for i := 0; i < len(items); i++ {
+		resp[i] = <-container
 	}
-	reader, _ := interfaceReader(map[string]interface{}{"item": item})
-	req := httpRequest{
-		Body:   reader,
-		Method: "POST",
-		Path:   fmt.Sprintf("%s/%s/%s/items", baseHost, b.service.projectId, b.Name),
-		Key:    b.service.key,
-	}
-	resp, _ := req.do()
-	return newResponse(resp)
+	return resp
 }
 
 // Update provides a way to update an item in the collection.
