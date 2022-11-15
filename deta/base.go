@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const baseRoot = "https://database.deta.sh/v1"
+const baseHost = "https://database.deta.sh/v1"
 
 type base struct {
 	Name    string
@@ -37,7 +37,7 @@ func (b *base) Put(items ...map[string]interface{}) []map[string]interface{} {
 			req := httpRequest{
 				Body:   reader,
 				Method: "PUT",
-				Path:   fmt.Sprintf("%s/%s/%s/items", baseRoot, b.service.projectId, b.Name),
+				Path:   fmt.Sprintf("%s/%s/%s/items", baseHost, b.service.projectId, b.Name),
 				Key:    b.service.key,
 			}
 			resp, err := req.do()
@@ -57,7 +57,7 @@ func (b *base) Put(items ...map[string]interface{}) []map[string]interface{} {
 
 func (b *base) fetch(last string) (*http.Response, error) {
 	var body io.Reader
-	path := fmt.Sprintf("%s/%s/%s/query", baseRoot, b.service.projectId, b.Name)
+	path := fmt.Sprintf("%s/%s/%s/query", baseHost, b.service.projectId, b.Name)
 	if last != "" {
 		reader, _ := interfaceReader(map[string]interface{}{"last": last, "query": []map[string]interface{}{}})
 		body = reader
@@ -122,7 +122,7 @@ func (b *base) Get(keys ...string) []map[string]interface{} {
 		req := httpRequest{
 			Body:   nil,
 			Method: "GET",
-			Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseRoot, b.service.projectId, b.Name, keys[0]),
+			Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseHost, b.service.projectId, b.Name, keys[0]),
 			Key:    b.service.key,
 		}
 		resp, err := req.do()
@@ -141,7 +141,7 @@ func (b *base) Get(keys ...string) []map[string]interface{} {
 				req := httpRequest{
 					Body:   nil,
 					Method: "GET",
-					Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseRoot, b.service.projectId, b.Name, key),
+					Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseHost, b.service.projectId, b.Name, key),
 					Key:    b.service.key,
 				}
 				resp, err := req.do()
@@ -172,7 +172,7 @@ func (b *base) Delete(keys ...string) []map[string]interface{} {
 			req := httpRequest{
 				Body:   nil,
 				Method: "DELETE",
-				Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseRoot, b.service.projectId, b.Name, key),
+				Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseHost, b.service.projectId, b.Name, key),
 				Key:    b.service.key,
 			}
 			resp, _ := req.do()
@@ -199,7 +199,7 @@ func (b *base) Insert(key string, item map[string]interface{}) (map[string]inter
 	req := httpRequest{
 		Body:   reader,
 		Method: "POST",
-		Path:   fmt.Sprintf("%s/%s/%s/items", baseRoot, b.service.projectId, b.Name),
+		Path:   fmt.Sprintf("%s/%s/%s/items", baseHost, b.service.projectId, b.Name),
 		Key:    b.service.key,
 	}
 	resp, err := req.do()
@@ -246,7 +246,7 @@ func (b *base) Fetch(query *query, last string, limit int) map[string]interface{
 	req := httpRequest{
 		Body:   reader,
 		Method: "POST",
-		Path:   fmt.Sprintf("%s/%s/%s/query", baseRoot, b.service.projectId, b.Name),
+		Path:   fmt.Sprintf("%s/%s/%s/query", baseHost, b.service.projectId, b.Name),
 		Key:    b.service.key,
 	}
 	resp, _ := req.do()

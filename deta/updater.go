@@ -34,7 +34,7 @@ func (u *updater) Do() (map[string]interface{}, error) {
 	req := httpRequest{
 		Body:   body,
 		Method: "PATCH",
-		Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseRoot, u.service.projectId, u.baseName, u.key),
+		Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseHost, u.service.projectId, u.baseName, u.key),
 		Key:    u.service.key,
 	}
 	resp, err := req.do()
