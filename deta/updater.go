@@ -29,7 +29,7 @@ func (u *updater) Prepend(attrs map[string]interface{}) {
 	u.updates["prepend"] = attrs
 }
 
-func (u *updater) Do() *response {
+func (u *updater) Do() *Response {
 	body, _ := interfaceReader(u.updates)
 	req := httpRequest{
 		Body:   body,

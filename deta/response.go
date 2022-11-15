@@ -1,14 +1,14 @@
 package deta
 
-type response struct {
+type Response struct {
 	StatusCode int
 	Data       map[string]interface{}
 }
 
-func (r *response) Ok() bool {
+func (r *Response) Ok() bool {
 	return r.StatusCode < 300
 }
 
-func (r *response) Issue() string {
+func (r *Response) Issue() string {
 	return ""
 }

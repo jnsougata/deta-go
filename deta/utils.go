@@ -37,9 +37,9 @@ func responseReader(resp *http.Response) (map[string]interface{}, error) {
 	return data, nil
 }
 
-func newResponse(resp *http.Response) *response {
+func newResponse(resp *http.Response) *Response {
 	data, _ := responseReader(resp)
-	return &response{
+	return &Response{
 		StatusCode: resp.StatusCode,
 		Data:       data,
 	}

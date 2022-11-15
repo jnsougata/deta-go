@@ -15,16 +15,16 @@ type base struct {
 
 // Put upserts a new item into the collection with the given key.
 // If the key is not provided, a new key will be generated.
-// A Put can upsrt 25 items at a time. If more than 25 items are provided,
+// A Put can upsert 25 items at a time. If more than 25 items are provided,
 // it will automatically slice the items into chunks of 25 and make multiple requests.
-func (b *base) Put(items ...map[string]interface{}) []*response {
+func (b *base) Put(items ...map[string]interface{}) []*Response {
 	var chunks [][]map[string]interface{}
 	if len(items) > 25 {
 		chunks = autoSlice(items, 25)
 	} else {
 		chunks = append(chunks, items)
 	}
-	respChannel := make(chan *response, len(chunks))
+	respChannel := make(chan *Response, len(chunks))
 	errChannel := make(chan error, len(chunks))
 	for _, body := range chunks {
 		go func(body []map[string]interface{}) {
@@ -47,7 +47,7 @@ func (b *base) Put(items ...map[string]interface{}) []*response {
 			respChannel <- newResponse(resp)
 		}(body)
 	}
-	responses := make([]*response, len(chunks))
+	responses := make([]*Response, len(chunks))
 	for i := 0; i < len(chunks); i++ {
 		responses[i] = <-respChannel
 	}
@@ -77,8 +77,9 @@ func (b *base) fetch(last string) (*http.Response, error) {
 // If no keys are provided, it returns the entire collection.
 // Empty Get() might take a long time to return for large collections.
 // If given keys are not found, it won't return any error.
-func (b *base) Get(keys ...string) []*response {
-	var container []*response
+// Check the Response to see if the item was found.
+func (b *base) Get(keys ...string) []*Response {
+	var container []*Response
 	if len(keys) == 0 {
 		var last string
 		resp, err := b.fetch(last)
@@ -121,7 +122,7 @@ func (b *base) Get(keys ...string) []*response {
 		}
 		container = append(container, newResponse(resp))
 	} else {
-		responses := make(chan *response, len(keys))
+		responses := make(chan *Response, len(keys))
 		for _, key := range keys {
 			go func(key string) {
 				req := httpRequest{
@@ -147,8 +148,8 @@ func (b *base) Get(keys ...string) []*response {
 // Delete deletes item(s) from the collection.
 // If no keys are provided, it returns an empty map[string]interface{}
 // Even if given keys are not found, it won't return an error.
-func (b *base) Delete(keys ...string) []*response {
-	respChannel := make(chan *response, len(keys))
+func (b *base) Delete(keys ...string) []*Response {
+	respChannel := make(chan *Response, len(keys))
 	for _, key := range keys {
 		go func(key string) {
 			req := httpRequest{
@@ -161,22 +162,21 @@ func (b *base) Delete(keys ...string) []*response {
 			respChannel <- newResponse(resp)
 		}(key)
 	}
-	responses := make([]*response, len(keys))
+	resp := make([]*Response, len(keys))
 	for i := 0; i < len(keys); i++ {
-		responses[i] = <-respChannel
+		resp[i] = <-respChannel
 	}
-	return responses
+	return resp
 }
 
 // Insert inserts a new item into the collection
 // only if the item does not already exist.
-// If the item exists, an error is returned in the response.
-func (b *base) Insert(key string, item map[string]interface{}) *response {
+// Response is returned which contains the data of the request.
+func (b *base) Insert(key string, item map[string]interface{}) *Response {
 	if key != "" {
 		item["key"] = key
 	}
 	reader, _ := interfaceReader(map[string]interface{}{"item": item})
-	fmt.Println(item)
 	req := httpRequest{
 		Body:   reader,
 		Method: "POST",
@@ -187,9 +187,10 @@ func (b *base) Insert(key string, item map[string]interface{}) *response {
 	return newResponse(resp)
 }
 
-// Update updates an item in the base associated with the given key.
-// If the item does not exist, it will give an error.
-// Returns an *updater object which can be used to update the item.
+// Update provides a way to update an item in the collection.
+// If the item does not exist, it will not panic.
+// Check the Response StatusCode to see if the item was found.
+// It returns an updater object which can be used to update the item.
 // updater has various update methods associated with it.
 func (b *base) Update(key string) *updater {
 	return &updater{
@@ -201,11 +202,12 @@ func (b *base) Update(key string) *updater {
 }
 
 // Fetch is used to do queries on the database.
-// It returns a `map[string]interface{}` of the response.
+// It returns a Response object which can be used to get the data.
+// Response object contains a Data field which is a map[string]interface{}
 // `last` is the last key for pagination and should be left empty for the first query.
 // `limit` is the number of items to return per query, the maximum is 1000 and use 0 for the default.
-func (b *base) Fetch(query *query, last string, limit int) *response {
-	body := []map[string]interface{}{}
+func (b *base) Fetch(query *query, last string, limit int) *Response {
+	var body []map[string]interface{}
 	if len(query.ors) > 0 {
 		body = query.ors
 	} else if len(query.values) > 0 {
