@@ -6,19 +6,26 @@ import (
 )
 
 
-type Deta struct {
+type deta struct {
 	service *service
 }
 
-func (d *Deta) Base(name string) *base {
+// Base returns the pointer to a new base instance
+func (d *deta) Base(name string) *base {
 	return &base{Name: name, service: d.service}
 }
 
-func (d *Deta) Drive(name string) *drive {
+// Drive returns the pointer to a new drive instance
+func (d *deta) Drive(name string) *drive {
 	return &drive{Name: name, service: d.service}
 }
 
-func New(args ...string) *Deta {
+// New returns the pointer to a new deta instance.
+// args is used to pass the project key as a string.
+// Only the first argument is used and the rest are ignored. 
+// Variadic arguments are used to make it easier to optionally pass the project key.
+// If not passed, it will try to read from the environment variable DETA_PROJECT_KEY
+func New(args ...string) *deta {
 	var key string
 	if len(args) > 0 {
 		key = args[0]
@@ -28,8 +35,8 @@ func New(args ...string) *Deta {
 
 	fragments := strings.Split(key, "_")
 	if len(fragments) != 2 {
-		panic("invalid project key, expected format >> id_key")
+		panic("invalid project key is given, visit https://web.deta.sh")
 	}
 	service := service{key: key, projectId: fragments[0]}
-	return &Deta{service: &service}
+	return &deta{service: &service}
 }
