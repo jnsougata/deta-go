@@ -3,8 +3,6 @@ package deta
 import "fmt"
 
 type query struct {
-	Last string
-	Limit int
 	values map[string]interface{}
 	ors    []map[string]interface{}
 }
@@ -76,11 +74,9 @@ func (q *query) Or(queries ...query) *query {
 	return q
 }
 
-func NewQuery(last string, limit int) *query {
+func Query() *query {
 	return &query{
 		values: map[string]interface{}{},
 		ors:    []map[string]interface{}{},
-		Last:   last,
-		Limit:  limit,
 	}
 }
