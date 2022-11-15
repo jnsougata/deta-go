@@ -29,7 +29,7 @@ func (u *updater) Prepend(attrs map[string]interface{}) {
 	u.updates["prepend"] = attrs
 }
 
-func (u *updater) Do() (map[string]interface{}, error) {
+func (u *updater) Do() *response {
 	body, _ := interfaceReader(u.updates)
 	req := httpRequest{
 		Body:   body,
@@ -37,9 +37,6 @@ func (u *updater) Do() (map[string]interface{}, error) {
 		Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseHost, u.service.projectId, u.baseName, u.key),
 		Key:    u.service.key,
 	}
-	resp, err := req.do()
-	if err != nil {
-		return nil, err
-	}
-	return responseReader(resp)
+	resp, _ := req.do()
+	return newResponse(resp)
 }

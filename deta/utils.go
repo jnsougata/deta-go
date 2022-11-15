@@ -33,6 +33,14 @@ func responseReader(resp *http.Response) (map[string]interface{}, error) {
 		return nil, err
 	}
 	var data map[string]interface{}
-	json.Unmarshal(body, &data)
+	_ = json.Unmarshal(body, &data)
 	return data, nil
+}
+
+func newResponse(resp *http.Response) *response {
+	data, _ := responseReader(resp)
+	return &response{
+		StatusCode: resp.StatusCode,
+		Data:       data,
+	}
 }

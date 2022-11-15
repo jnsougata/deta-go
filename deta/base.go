@@ -17,14 +17,14 @@ type base struct {
 // If the key is not provided, a new key will be generated.
 // A Put can upsrt 25 items at a time. If more than 25 items are provided,
 // it will automatically slice the items into chunks of 25 and make multiple requests.
-func (b *base) Put(items ...map[string]interface{}) []map[string]interface{} {
+func (b *base) Put(items ...map[string]interface{}) []*response {
 	var chunks [][]map[string]interface{}
 	if len(items) > 25 {
 		chunks = autoSlice(items, 25)
 	} else {
 		chunks = append(chunks, items)
 	}
-	respChannel := make(chan map[string]interface{}, len(chunks))
+	respChannel := make(chan *response, len(chunks))
 	errChannel := make(chan error, len(chunks))
 	for _, body := range chunks {
 		go func(body []map[string]interface{}) {
@@ -44,11 +44,10 @@ func (b *base) Put(items ...map[string]interface{}) []map[string]interface{} {
 			if err != nil {
 				panic(err)
 			}
-			data, _ := responseReader(resp)
-			respChannel <- data
+			respChannel <- newResponse(resp)
 		}(body)
 	}
-	responses := make([]map[string]interface{}, len(chunks))
+	responses := make([]*response, len(chunks))
 	for i := 0; i < len(chunks); i++ {
 		responses[i] = <-respChannel
 	}
@@ -78,23 +77,20 @@ func (b *base) fetch(last string) (*http.Response, error) {
 // If no keys are provided, it returns the entire collection.
 // Empty Get() might take a long time to return for large collections.
 // If given keys are not found, it won't return any error.
-func (b *base) Get(keys ...string) []map[string]interface{} {
-	var container []map[string]interface{}
+func (b *base) Get(keys ...string) []*response {
+	var container []*response
 	if len(keys) == 0 {
 		var last string
 		resp, err := b.fetch(last)
 		if err != nil {
 			panic(err)
 		}
-		data, err := responseReader(resp)
+		cresp := newResponse(resp)
+		container = append(container, cresp)
 		if err != nil {
 			panic(err)
 		}
-		items := data["items"]
-		for _, item := range items.([]interface{}) {
-			container = append(container, item.(map[string]interface{}))
-		}
-		lastValue, ok := data["paging"].(map[string]interface{})["last"]
+		lastValue, ok := cresp.Data["paging"].(map[string]interface{})["last"]
 		if ok {
 			last = lastValue.(string)
 			for {
@@ -102,15 +98,9 @@ func (b *base) Get(keys ...string) []map[string]interface{} {
 				if err != nil {
 					panic(err)
 				}
-				data, err := responseReader(resp)
-				if err != nil {
-					panic(err)
-				}
-				items := data["items"]
-				for _, item := range items.([]interface{}) {
-					container = append(container, item.(map[string]interface{}))
-				}
-				lastValue, ok := data["paging"].(map[string]interface{})["last"]
+				cresp := newResponse(resp)
+				container = append(container, cresp)
+				lastValue, ok := cresp.Data["paging"].(map[string]interface{})["last"]
 				if ok {
 					last = lastValue.(string)
 				} else {
@@ -129,13 +119,9 @@ func (b *base) Get(keys ...string) []map[string]interface{} {
 		if err != nil {
 			panic(err)
 		}
-		data, err := responseReader(resp)
-		if err != nil {
-			panic(err)
-		}
-		container = append(container, data)
+		container = append(container, newResponse(resp))
 	} else {
-		responses := make(chan map[string]interface{}, len(keys))
+		responses := make(chan *response, len(keys))
 		for _, key := range keys {
 			go func(key string) {
 				req := httpRequest{
@@ -148,11 +134,7 @@ func (b *base) Get(keys ...string) []map[string]interface{} {
 				if err != nil {
 					responses <- nil
 				}
-				data, err := responseReader(resp)
-				if err != nil {
-					panic(err)
-				}
-				responses <- data
+				responses <- newResponse(resp)
 			}(key)
 		}
 		for i := 0; i < len(keys); i++ {
@@ -165,8 +147,8 @@ func (b *base) Get(keys ...string) []map[string]interface{} {
 // Delete deletes item(s) from the collection.
 // If no keys are provided, it returns an empty map[string]interface{}
 // Even if given keys are not found, it won't return an error.
-func (b *base) Delete(keys ...string) []map[string]interface{} {
-	respChannel := make(chan map[string]interface{}, len(keys))
+func (b *base) Delete(keys ...string) []*response {
+	respChannel := make(chan *response, len(keys))
 	for _, key := range keys {
 		go func(key string) {
 			req := httpRequest{
@@ -176,11 +158,10 @@ func (b *base) Delete(keys ...string) []map[string]interface{} {
 				Key:    b.service.key,
 			}
 			resp, _ := req.do()
-			data, _ := responseReader(resp)
-			respChannel <- data
+			respChannel <- newResponse(resp)
 		}(key)
 	}
-	responses := make([]map[string]interface{}, len(keys))
+	responses := make([]*response, len(keys))
 	for i := 0; i < len(keys); i++ {
 		responses[i] = <-respChannel
 	}
@@ -190,7 +171,7 @@ func (b *base) Delete(keys ...string) []map[string]interface{} {
 // Insert inserts a new item into the collection
 // only if the item does not already exist.
 // If the item exists, an error is returned in the response.
-func (b *base) Insert(key string, item map[string]interface{}) (map[string]interface{}, error) {
+func (b *base) Insert(key string, item map[string]interface{}) *response {
 	if key != "" {
 		item["key"] = key
 	}
@@ -202,11 +183,8 @@ func (b *base) Insert(key string, item map[string]interface{}) (map[string]inter
 		Path:   fmt.Sprintf("%s/%s/%s/items", baseHost, b.service.projectId, b.Name),
 		Key:    b.service.key,
 	}
-	resp, err := req.do()
-	if err != nil {
-		return nil, err
-	}
-	return responseReader(resp)
+	resp, _ := req.do()
+	return newResponse(resp)
 }
 
 // Update updates an item in the base associated with the given key.
@@ -226,7 +204,7 @@ func (b *base) Update(key string) *updater {
 // It returns a `map[string]interface{}` of the response.
 // `last` is the last key for pagination and should be left empty for the first query.
 // `limit` is the number of items to return per query, the maximum is 1000 and use 0 for the default.
-func (b *base) Fetch(query *query, last string, limit int) map[string]interface{} {
+func (b *base) Fetch(query *query, last string, limit int) *response {
 	body := []map[string]interface{}{}
 	if len(query.ors) > 0 {
 		body = query.ors
@@ -250,6 +228,5 @@ func (b *base) Fetch(query *query, last string, limit int) map[string]interface{
 		Key:    b.service.key,
 	}
 	resp, _ := req.do()
-	data, _ := responseReader(resp)
-	return data
+	return newResponse(resp)
 }
