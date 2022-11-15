@@ -40,7 +40,7 @@ func (b *base) Put(items ...map[string]interface{}) []*Response {
 				Path:   fmt.Sprintf("%s/%s/%s/items", baseHost, b.service.projectId, b.Name),
 				Key:    b.service.key,
 			}
-			resp, err := req.do()
+			resp, err := req.Do()
 			if err != nil {
 				panic(err)
 			}
@@ -70,7 +70,7 @@ func (b *base) fetch(last string) (*http.Response, error) {
 		Path:   path,
 		Key:    b.service.key,
 	}
-	return req.do()
+	return req.Do()
 }
 
 // Get gets item(s) from the base associated with the given key(s).
@@ -116,7 +116,7 @@ func (b *base) Get(keys ...string) []*Response {
 			Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseHost, b.service.projectId, b.Name, keys[0]),
 			Key:    b.service.key,
 		}
-		resp, err := req.do()
+		resp, err := req.Do()
 		if err != nil {
 			panic(err)
 		}
@@ -131,7 +131,7 @@ func (b *base) Get(keys ...string) []*Response {
 					Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseHost, b.service.projectId, b.Name, key),
 					Key:    b.service.key,
 				}
-				resp, err := req.do()
+				resp, err := req.Do()
 				if err != nil {
 					responses <- nil
 				}
@@ -158,7 +158,7 @@ func (b *base) Delete(keys ...string) []*Response {
 				Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseHost, b.service.projectId, b.Name, key),
 				Key:    b.service.key,
 			}
-			resp, _ := req.do()
+			resp, _ := req.Do()
 			respChannel <- newResponse(resp)
 		}(key)
 	}
@@ -183,7 +183,7 @@ func (b *base) Insert(items ...map[string]interface{}) []*Response {
 				Path:   fmt.Sprintf("%s/%s/%s/items", baseHost, b.service.projectId, b.Name),
 				Key:    b.service.key,
 			}
-			resp, err := req.do()
+			resp, err := req.Do()
 			if err != nil {
 				panic(err)
 			}
@@ -211,7 +211,7 @@ func (b *base) Update(key string) *updater {
 	}
 }
 
-// Fetch is used to do queries on the database.
+// Fetch is used to Do queries on the database.
 // It returns a Response object which can be used to get the data.
 // Response object contains a Data field which is a map[string]interface{}
 // `last` is the last key for pagination and should be left empty for the first query.
@@ -239,6 +239,6 @@ func (b *base) Fetch(query *query, last string, limit int) *Response {
 		Path:   fmt.Sprintf("%s/%s/%s/query", baseHost, b.service.projectId, b.Name),
 		Key:    b.service.key,
 	}
-	resp, _ := req.do()
+	resp, _ := req.Do()
 	return newResponse(resp)
 }

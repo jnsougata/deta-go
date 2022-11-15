@@ -37,6 +37,6 @@ func (u *updater) Do() *Response {
 		Path:   fmt.Sprintf("%s/%s/%s/items/%s", baseHost, u.service.projectId, u.baseName, u.key),
 		Key:    u.service.key,
 	}
-	resp, _ := req.do()
+	resp, _ := req.Do()
 	return newResponse(resp)
 }
