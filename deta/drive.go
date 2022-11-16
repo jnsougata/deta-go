@@ -108,7 +108,7 @@ func (d *drive) Get(name string) *StreamingResponse {
 	return &StreamingResponse{resp.StatusCode, resp.Body}
 }
 
-// Delete deletes the file with the given names.
+// Delete deletes the files with the given names.
 func (d *drive) Delete(names ...string) *Response {
 	body, _ := interfaceReader(map[string][]string{"names": names})
 	req := httpRequest{
