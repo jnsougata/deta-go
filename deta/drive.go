@@ -13,6 +13,8 @@ type drive struct {
 	service *service
 }
 
+// Put uploads the file with the given name.
+// If the file already exists, it is overwritten.
 func (d *drive) Put(name string, content []byte) *Response {
 	if len(content) <= maxChunkSize {
 		req := driveRequest{
@@ -31,17 +33,15 @@ func (d *drive) Put(name string, content []byte) *Response {
 		if len(content)%maxChunkSize != 0 {
 			chunks++
 		}
-		var chunkedContent [][]byte
+		var parts [][]byte
 		for i := 0; i < chunks; i++ {
 			start := i * maxChunkSize
 			end := start + maxChunkSize
 			if end > len(content) {
 				end = len(content)
 			}
-			chunkedContent = append(chunkedContent, content[start:end])
+			parts = append(parts, content[start:end])
 		}
-		lastChunk := chunkedContent[len(chunkedContent)-1]
-		chunkedContent = chunkedContent[:len(chunkedContent)-1]
 		initiateReq := driveRequest{
 			Method: "POST",
 			Path:   fmt.Sprintf("%s/%s/%s/uploads?name=%s", driveHost, d.service.projectId, d.Name, name),
@@ -61,11 +61,11 @@ func (d *drive) Put(name string, content []byte) *Response {
 		if err != nil {
 			panic(err)
 		}
-		restUploads := make(chan *Response, len(chunkedContent))
-		for i, chunk := range chunkedContent {
-			go func(i int, chunk []byte) {
+		uploads := make(chan *Response, len(parts))
+		for i, part := range parts {
+			go func(i int, part []byte) {
 				req := driveRequest{
-					Body:   chunk,
+					Body:   part,
 					Method: "POST",
 					Path: fmt.Sprintf(
 						"%s/%s/%s/uploads/%s/parts?name=%s&part=%d",
@@ -73,21 +73,12 @@ func (d *drive) Put(name string, content []byte) *Response {
 					Key: d.service.key,
 				}
 				r, _ := req.Do()
-				restUploads <- newResponse(r)
-			}(i, chunk)
+				uploads <- newResponse(r)
+			}(i, part)
 		}
-		for i := 0; i < len(chunkedContent); i++ {
-			<-restUploads
+		for i := 0; i < len(parts); i++ {
+			<-uploads
 		}
-		req := driveRequest{
-			Body:   lastChunk,
-			Method: "POST",
-			Path: fmt.Sprintf(
-				"%s/%s/%s/uploads/%s/parts?name=%s&part=%d",
-				driveHost, d.service.projectId, d.Name, resp.UploadId, resp.Name, chunks),
-			Key: d.service.key,
-		}
-		_, _ = req.Do()
 		completeReq := driveRequest{
 			Method: "PATCH",
 			Path: fmt.Sprintf(
@@ -101,4 +92,62 @@ func (d *drive) Put(name string, content []byte) *Response {
 		}
 		return newResponse(finalResp)
 	}
+}
+
+// Get returns the file as ReadCloser with the given name.
+func (d *drive) Get(name string) *StreamingResponse {
+	req := driveRequest{
+		Method: "GET",
+		Path:   fmt.Sprintf("%s/%s/%s/files/download?name=%s", driveHost, d.service.projectId, d.Name, name),
+		Key:    d.service.key,
+	}
+	resp, err := req.Do()
+	if err != nil {
+		panic(err)
+	}
+	return &StreamingResponse{resp.StatusCode, resp.Body}
+}
+
+// Delete deletes the file with the given names.
+func (d *drive) Delete(names ...string) *Response {
+	body, _ := interfaceReader(map[string][]string{"names": names})
+	req := httpRequest{
+		Method: "DELETE",
+		Path:   fmt.Sprintf("%s/%s/%s/files", driveHost, d.service.projectId, d.Name),
+		Key:    d.service.key,
+		Body:   body,
+	}
+	resp, err := req.Do()
+	if err != nil {
+		panic(err)
+	}
+	return newResponse(resp)
+}
+
+// FilesWithPrefix returns all the files in the drive with the given prefix.
+// If prefix is empty, all files are returned.
+// limit <- the number of files to return, defaults to 1000.
+// last <- last filename of the previous request to get the next set of files.
+// Use limit 0 and last "" to obtain the default behaviour of the drive.
+func (d *drive) FilesWithPrefix(prefix string, limit int, last string) *Response {
+	if limit == 0 || limit > 1000 || limit < 0 {
+		limit = 1000
+	}
+	path := fmt.Sprintf("%s/%s/%s/files?limit=%d", driveHost, d.service.projectId, d.Name, limit)
+	if prefix != "" {
+		path += fmt.Sprintf("&prefix=%s", prefix)
+	}
+	if last != "" {
+		path += fmt.Sprintf("&last=%s", last)
+	}
+	req := httpRequest{
+		Method: "GET",
+		Path:   path,
+		Key:    d.service.key,
+	}
+	resp, err := req.Do()
+	if err != nil {
+		panic(err)
+	}
+	return newResponse(resp)
 }

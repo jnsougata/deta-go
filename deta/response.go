@@ -2,6 +2,7 @@ package deta
 
 import (
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -28,4 +29,17 @@ func (r *Response) Error() string {
 		return fmt.Sprintf("<%s: %d>", strings.Join(errs, ","), r.StatusCode)
 	}
 	return fmt.Sprintf("<Success: %d>", r.StatusCode)
+}
+
+type StreamingResponse struct {
+	StatusCode int
+	Reader     io.ReadCloser
+}
+
+func (r *StreamingResponse) Ok() bool {
+	return r.StatusCode < 300
+}
+
+func (r *StreamingResponse) Error() string {
+	return fmt.Sprintf("<%d>", r.StatusCode)
 }
