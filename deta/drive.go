@@ -124,12 +124,12 @@ func (d *drive) Delete(names ...string) *Response {
 	return newResponse(resp)
 }
 
-// FilesWithPrefix returns all the files in the drive with the given prefix.
+// Files returns all the files in the drive with the given prefix.
 // If prefix is empty, all files are returned.
 // limit <- the number of files to return, defaults to 1000.
 // last <- last filename of the previous request to get the next set of files.
 // Use limit 0 and last "" to obtain the default behaviour of the drive.
-func (d *drive) FilesWithPrefix(prefix string, limit int, last string) *Response {
+func (d *drive) Files(prefix string, limit int, last string) *Response {
 	if limit == 0 || limit > 1000 || limit < 0 {
 		limit = 1000
 	}
